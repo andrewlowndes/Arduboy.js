@@ -1,0 +1,193 @@
+/* Funky design to match arduino layout */
+#arduboy_simulator {
+    width: 320px;
+    height: 480px;
+    border: 1px solid #AAA;
+    position: relative;
+    background-color: white;
+    
+    border-radius: 15px;
+}
+
+#screen, #led, #controls, #buttons, #dpad, #up, #right, #left, #down, #a, #b {
+    position: absolute;
+}
+
+#screen {
+    -moz-transform: scale(2);
+    -moz-transform-origin: 0px 0px;
+    -webkit-transform: scale(2);
+    -webkit-transform-origin: 0px 0px;
+    transform: scale(2);
+    transform-origin: 0px 0px;
+
+    width: 128px;
+    height: 64px;
+    background-color: black;
+    top: 30px;
+    left: 30px;
+    border: 1px solid black;
+    
+    -moz-image-rendering: pixelated;
+    -webkit-image-rendering: pixelated;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+#led {
+    position: absolute;
+    top: 80px;
+    left: 10px;
+    width: 10px;
+    height: 20px;
+    border: 1px solid #AAA;
+}
+
+#dpad {
+    top: 240px;
+    left: 10px;
+}
+
+#up, #down, #left, #right {
+    background-color: #333;
+    color: white;
+    text-transform: uppercase;
+    border: 0px none;
+    text-align: center;
+    outline: none;
+    padding: 0px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#up, #down {
+    width: 50px;
+    height: 40px;
+}
+
+#left, #right {
+    height: 50px;
+    width: 40px;
+}
+
+#up, #down {
+    left: 42px;
+}
+
+#up {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+#up:after, #down:after, #right:after, #left:after {
+    position: absolute;
+    text-indent: -3000px;
+    line-height: 0px;
+    overflow: hidden;
+    content: ".";
+    display: block;
+    border-style: solid;
+}
+
+#up:after {
+    left: 0px;
+    top: 100%;
+    border-width: 25px 25px 0 25px;
+    border-color: #333 transparent transparent transparent;
+}
+
+#down {
+    top: 94px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+#down:after {
+    left: 0px;
+    bottom: 100%;
+    border-width: 0px 25px 25px 25px;
+    border-color: transparent transparent #333 transparent;
+}
+
+#left, #right {
+    top: 42px;
+}
+
+#left {
+    border-bottom-left-radius: 10px;
+    border-top-left-radius: 10px;
+    text-align: right;
+}
+
+#left:after {
+    left: 100%;
+    top: 0px;
+    border-width: 25px 0 25px 25px;
+    border-color: transparent transparent transparent #333;
+}
+
+#right {
+    left: 94px;
+    border-bottom-right-radius: 10px;
+    border-top-right-radius: 10px;
+    text-align: left;
+}
+
+#right:after {
+    right: 100%;
+    top: 0px;
+    border-width: 25px 25px 25px 0px;
+    border-color: transparent #333 transparent transparent;
+}
+
+#up:hover, #down:hover, #left:hover, #right:hover {
+    background-color: #555;
+}
+
+#up:active, #down:active, #left:active, #right:active,
+#up.active, #down.active, #left.active, #right.active {
+    background-color: #000;
+}
+
+#up:hover:after { border-color: #555 transparent transparent transparent; }
+#right:hover:after { border-color: transparent #555 transparent transparent; }
+#down:hover:after { border-color: transparent transparent #555 transparent; }
+#left:hover:after { border-color: transparent transparent transparent #555; }
+
+#up:active:after, #up.active:after { border-color: #000 transparent transparent transparent; }
+#right:active:after, #right.active:after { border-color: transparent #000 transparent transparent; }
+#down:active:after, #down.active:after { border-color: transparent transparent #000 transparent; }
+#left:active:after, #left.active:after { border-color: transparent transparent transparent #000; }
+
+#a, #b {
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    background-color: #F00;
+    border: 0px none;
+    color: white;
+    outline: none;
+    cursor: pointer;
+    padding: 0px;
+}
+
+#a:hover, #b:hover {
+    background-color: #F44;
+}
+
+#a:active, #a.active, #b:active, #b.active {
+    background-color: #C00;
+}
+
+#buttons {
+    top: 280px;
+    left: 200px;
+}
+
+#a {
+    top: 20px;
+}
+
+#b {
+    left: 50px;
+}

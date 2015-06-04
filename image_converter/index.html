@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        
+        <style>
+            #screen {
+                background-color: black;
+                border: 1px solid black;
+            }
+            
+            #code {
+                width: 400px;
+                height: 300px;
+            }
+            
+            label {
+                display: inline-block;
+                width: 130px;
+            }
+            
+            .form_pair {
+                margin: 10px 0px;
+            }
+            
+            .form_value {
+                margin: 5px 0px;
+                display: inline-block;
+            }
+        </style>
+        
+        <script src="../Arduboy.js"></script>
+    </head>
+    <body>
+        <h1>Arduboy Image Converter</h1>
+        
+        <div id="demo">
+            <div class="form_pair">
+                <label>Select an image:</label>
+                <div class="form_value"><input type="file" id="imageselect" /></div>
+            </div>
+            
+            <fieldset>
+                <legend>Advanced options</legend>
+                
+                <div class="form_pair">
+                    <label>Resize</label>
+                    <div class="form_value">
+                        <input type="radio" name="scale" id="scale_fit" checked="checked" />Scale to fit
+                        <input type="radio" name="scale" id="scale_fill" />Scale to fill
+                        <input type="radio" name="scale" id="scale_none" />No scaling
+                    </div>
+                </div>
+                
+                <div class="form_pair">
+                    <label>Factor</label>
+                    <div class="form_value">
+                        <input type="radio" name="factor" id="factor_luminance" checked="checked" />Luminance
+                        <input type="radio" name="factor" id="factor_average" />Average
+                        <input type="radio" name="factor" id="factor_red" />Red
+                        <input type="radio" name="factor" id="factor_green" />Green
+                        <input type="radio" name="factor" id="factor_blue" />Blue
+                        <input type="radio" name="factor" id="factor_alpha" />Alpha
+                    </div>
+                </div>
+                
+                <div class="form_pair">
+                    <label>Threshold:</label>
+                    <div class="form_value"><input id="threshold" type="range" min="0" max="255" value="127" /></div>
+                </div>
+
+                <div class="form_pair">
+                    <label>Invert:</label>
+                    <div class="form_value">
+                        <input type="radio" name="invert" id="invert_no" checked="checked" />No
+                        <input type="radio" name="invert" id="invert_yes" />Yes
+                    </div>
+                </div>
+                
+                <div class="form_pair">
+                    <label>Print blocks wide:</label>
+                    <div class="form_value"><input id="num_blocks" type="number" value="8" /></div>
+                </div>
+            </fieldset>
+            
+            <div class="form_pair">
+                <label>Size</label>
+                <div>
+                    <div><strong>Width:</strong> <span><span id="imagewidth">-</span>px</span></div>
+                    <div><strong>Height:</strong> <span><span id="imageheight">-</span>px</span></div>
+                </div>
+            </div>
+            
+            <div class="form_pair">
+                <label>Preview:</label>
+                <div><canvas id="screen" width="128" height="64" ></canvas></div>
+            </div>
+            
+            <div class="form_pair">
+                <label>Code:</label>
+                <div><textarea id="code"></textarea></div>
+            </div>
+        </div>
+        
+        <script>
+            function getId(id) {
+                return document.getElementById(id);
+            }
+            
+            Node.prototype.on = function(eventsStr, callback) {
+                var eventNames = eventsStr.split(/\s+/);
+                for (var i=0; i<eventNames.length; i++) {
+                    this.addEventListener(eventNames[i], callback);
+                }
+            };
+            
+            var $screen = getId("screen"), $code = getId("code");
+            var $imageselect = getId("imageselect"), $imageWidth = getId("imagewidth"), $imageHeight = getId("imageheight");
+            
+            //set the args for the arduboy statically so it can be instantiated by the program itself
+            Arduboy.screen = $screen;
+            
+            var display = new Arduboy();
+            
+            var FACTORS = {
+                LUMINANCE: 0,
+                AVERAGE: 1,
+                RED: 2,
+                GREEN: 3,
+                BLUE: 4,
+                ALPHA: 5
+            };
+            
+            var SCALES = {
+                FIT: 1,
+                FILL: 2,
+                NONE: 3
+            };
+
+            var INVERTS = {
+                YES: 1,
+                NO: 2
+            };
+            
+            var threshold = 127;
+            var factor = FACTORS.LUMINANCE;
+            var scale = SCALES.FIT;
+            var printBlocks = 8;
+            var invert = INVERTS.NO;
+            
+            //inputs
+            var $scaleFit = getId("scale_fit");
+            $scaleFit.on("click", function() {
+                scale = SCALES.FIT;
+                doIt();
+            });
+            
+            var $scaleFill = getId("scale_fill");
+            $scaleFill.on("click", function() {
+                scale = SCALES.FILL;
+                doIt();
+            });
+            
+            var $scaleNone = getId("scale_none");
+            $scaleNone.on("click", function() {
+                scale = SCALES.NONE;
+                doIt();
+            });
+
+            var $invertNo = getId("invert_no");
+            $invertNo.on("click", function() {
+                invert = INVERTS.NO;
+                doIt();
+            });
+            
+            var $invertYes = getId("invert_yes");
+            $invertYes.on("click", function() {
+                invert = INVERTS.YES;
+                doIt();
+            });
+
+            var $factorLuminance = getId("factor_luminance");
+            $factorLuminance.on("click", function() {
+                factor = FACTORS.LUMINANCE;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $factorAverage = getId("factor_average");
+            $factorAverage.on("click", function() {
+                factor = FACTORS.AVERAGE;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $factorRed = getId("factor_average");
+            $factorRed.on("click", function() {
+                factor = FACTORS.RED;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $factorGreen = getId("factor_average");
+            $factorGreen.on("click", function() {
+                factor = FACTORS.GREEN;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $factorBlue = getId("factor_average");
+            $factorBlue.on("click", function() {
+                factor = FACTORS.BLUE;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $factorAlpha = getId("factor_average");
+            $factorAlpha.on("click", function() {
+                factor = FACTORS.ALPHA;
+                decideFactorFunc();
+                doIt();
+            });
+            
+            var $threshold = getId("threshold");
+            $threshold.on("change", function() {
+                threshold = parseInt($threshold.value);
+                doIt();
+            });
+            
+            var $numBlocks = getId("num_blocks");
+            $numBlocks.on("keyup input", function() {
+                printBlocks = parseInt($numBlocks.value);
+                doIt();
+            });
+            
+            //register the updating of the threshold and factor based on the form ui
+            var factorFunc;
+            
+            decideFactorFunc();
+            
+            function decideFactorFunc() {
+                switch (factor) {
+                    case FACTORS.LUMINANCE:
+                        factorFunc = function(r,g,b,a) {
+                            return (0.2126*r + 0.7152*g + 0.0722*b) > threshold;
+                        };
+                        break;
+                    case FACTORS.AVERAGE:
+                        factorFunc = function(r,g,b,a) {
+                            return ((r + g + b)/3) > threshold;
+                        };
+                        break;
+                    case FACTORS.RED:
+                        factorFunc = function(r,g,b,a) {
+                            return r > threshold;
+                        };
+                        break;
+                    case FACTORS.GREEN:
+                        factorFunc = function(r,g,b,a) {
+                            return g > threshold;
+                        };
+                        break;
+                    case FACTORS.BLUE:
+                        factorFunc = function(r,g,b,a) {
+                            return b > threshold;
+                        };
+                        break;
+                    case FACTORS.ALPHA:
+                        factorFunc = function(r,g,b,a) {
+                            return a > threshold;
+                        };
+                        break;
+                }
+            }
+            
+            var tempCanvas = document.createElement("canvas"), tempImg;
+            
+            $imageselect.onchange = function(e) {
+                //read the image file
+                var files = e.target.files;
+                if (!files.length) {
+                    return;
+                }
+                
+                // files is a FileList of File objects. List some properties.
+                var selectedFile = files[0];
+                
+                if (!selectedFile.type.match('image.*')) {
+                    return;
+                }
+                
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    tempImg = document.createElement("img");
+                    
+                    tempImg.onload = function() {
+                        doIt();
+                    };
+                    
+                    tempImg.src = reader.result;
+                };
+                
+                reader.readAsDataURL(selectedFile);
+            };
+            
+            function doIt() {
+                if (!tempImg) {
+                    return;
+                }
+                
+                //determine the target size based on the scaling of the image
+               var newSize = { width: tempImg.width, height: tempImg.height };
+                var targetWidth = 128, targetHeight = 64;
+                
+                if (newSize.width > targetWidth || newSize.height>targetHeight) {
+                    var aspect = newSize.width / newSize.height;
+                    
+                    var targetAspect = targetWidth / targetHeight;
+                    var scaleAmount = 1;
+                    
+                    switch (scale) {
+                        case SCALES.FILL: 
+                            if (aspect < targetAspect) {
+                                scaleAmount = targetWidth / newSize.width;
+                            } else {
+                                scaleAmount = targetHeight / newSize.height;
+                            }
+                            break;
+                        case SCALES.FIT:
+                            if (aspect > targetAspect) {
+                                scaleAmount = targetWidth / newSize.width;
+                            } else {
+                                scaleAmount = targetHeight / newSize.height;
+                            }
+                            break;
+                        case SCALES.NONE:
+                            break;
+                    }
+                
+                    newSize.width = newSize.width * scaleAmount;
+                    newSize.height = newSize.height * scaleAmount;
+                }
+                
+                //pad the canvas size width to be a factor of 8 for rendering
+                tempCanvas.width = Math.ceil(newSize.width / 8)*8;
+                tempCanvas.height = tempCanvas.width/newSize.width * newSize.height;
+                
+                //now render the image onto another canvas so we can read back the pixel info
+                var tempContext = tempCanvas.getContext("2d");
+                tempContext.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempContext.drawImage(tempImg, 0, 0, newSize.width, newSize.height);
+                
+                var imgData = tempContext.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                var imagePixels = imgData.data;
+                
+                //step through each pixel and decide what our bits should be                    
+                var bitStr = "", bitOn, bitOff;
+                
+                switch (invert) {
+                    case INVERTS.YES:
+                        bitOn = "0";
+                        bitOff = "1";
+                        break;
+                    case INVERTS.NO:
+                        bitOn = "1";
+                        bitOff = "0";
+                        break;
+                }
+
+                for (var i=0, r, b, g, a; i<imagePixels.length; i+=4) {
+                    r = imagePixels[i];
+                    g = imagePixels[i+1];
+                    b = imagePixels[i+2];
+                    a = imagePixels[i+3];
+                    
+                    //decide what we should do based on the factor and threshold
+                    bitStr += (factorFunc(r,g,b,a) ? bitOn : bitOff);
+                }
+                
+                //the structure is to store the character representing a strip in the y axis for each byte but continuing in a grid formation
+                /*var byteArr = [], i, j, k, byteStr;
+                for (j=0; j<tempCanvas.height; j+=8) {
+                    for (i=0; i<tempCanvas.width; i++) {
+                        byteStr = "";
+                        for (k=0; k<8; k++) {
+                            byteStr += bitStr[i + (j+k)*tempCanvas.width];
+                        }
+                        byteArr.push(parseInt(byteStr, 2));
+                    }
+                }*/
+                
+                //the bytes are constructed in the y, not the x so transform them
+                var byteArr = [];
+                for (var i=0; i<bitStr.length; i+=8) {
+                    byteArr.push(parseInt(bitStr.substring(i, i+8), 2));
+                }
+                
+                //now read the bits in
+                //render each block of say 8 then do a new line
+                var codeStr = "", hexStr = "";
+                for (var i=1; i<=byteArr.length; i++) {
+                    hexStr = (byteArr[i-1]).toString(16).toUpperCase();
+                    if (hexStr.length<2) hexStr = "0" + hexStr;
+                    codeStr += "0x" + hexStr + ", ";
+                    
+                    if (!(i % printBlocks)) {
+                        codeStr += "\n";
+                    }
+                }
+                
+                codeStr = codeStr.substring(0, codeStr.length-2);
+                if (codeStr.length && codeStr[codeStr.length-1]==",") {
+                    codeStr = codeStr.substring(0, codeStr.length-1);
+                }
+                
+                $code.value = "{" + codeStr + "}";
+                
+                $imageWidth.innerHTML = tempCanvas.width;
+                $imageHeight.innerHTML = tempCanvas.height;
+                
+                //draw the generated code the arduboy simulator screen
+                display.start();
+                display.clearDisplay();
+                display.drawBitmap(0, 0, byteArr, tempCanvas.width, tempCanvas.height, 1);
+                display.display();
+                
+                Arduboy.flush();
+            }
+        </script>
+    </body>
+</html>

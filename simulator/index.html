@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        
+        <link rel="stylesheet" type="text/css" href="Arduboy.css" />
+        
+        <style>
+            #controls_table {
+                text-align: left;
+            }
+            
+            #arduboy_simulator {
+                float: left;
+                margin-right: 20px;
+            }
+
+            #demo:after {
+                clear: both;
+                display: block;
+                content: ".";
+                height: 0px;
+                line-height: 0px;
+                visibility: hidden;
+            }
+
+            #arduboy_editor {
+                float: left;
+                width: 500px;
+                max-width: 100%;
+            }
+
+            #arduboy_editor #code {
+                width: 100%;
+                height: 448px;
+                box-sizing: border-box;
+            }
+
+            #arduboy_editor #run {
+                width: 100%;
+                text-align: center;
+                padding: 5px;
+            }
+        </style>
+        
+        <script src="../WebGL2DScreen.js"></script>
+        <script src="../Arduboy.js"></script>
+    </head>
+    <body>
+        <h1>Arduboy Simulator</h1>
+        
+        <div id="demo">
+            <div id="arduboy_simulator">
+                <canvas id="screen" width="128" height="64"></canvas>
+                <audio id="speaker"></audio>
+                <div id="led"></div>
+                
+                <div id="controls">
+                    <div id="dpad"><button id="up">up</button> <button id="left">left</button> <button id="right">right</button> <button id="down">down</button></div>
+                    <div id="buttons"><button id="a">A</button> <button id="b">B</button></div>
+                </div>
+            </div>
+
+            <div id="arduboy_editor">
+                <textarea id="code">var display = new Arduboy();
+
+var up = 8;
+var left = 9;
+var right = 5;
+var down = 10;
+var a = A0;
+var b = A1;
+
+var x = 0;
+var y = 0;
+
+var speed = 3;
+
+function btnDown(btn) {
+  return !digitalRead(btn);
+}
+
+function drawText() {
+  display.clearDisplay();
+  display.setCursor(x, y);
+  display.print("Hello World!");
+  display.display();
+}
+
+function setup() {
+  SPI.begin();
+  display.start();
+  display.setTextSize(1);
+  drawText();
+}
+
+function loop() {
+  //move the text around with the arrow buttons
+  if (btnDown(up)) y-=speed;
+  if (btnDown(down)) y+=speed;
+  if (btnDown(left)) x-=speed;
+  if (btnDown(right)) x+=speed;
+  drawText();
+}</textarea> 
+                <button id="run">Run</button></div>
+            </div>
+        </div>
+        
+        <p>Controls: use the interactive buttons above or use the following keyboard mappings:</p>
+        
+        <p>Note: delay not supported in js</p>
+        
+        <table id="controls_table">
+            <tbody>
+                <tr>
+                    <th>Up:</th>
+                    <td>W / Up arrow</td>
+                </tr>
+                
+                <tr>
+                    <th>Left:</th>
+                    <td>A / Left arrow</td>
+                </tr>
+                <tr>
+                    <th>Right:</th>
+                    <td>D / Right arrow</td>
+                </tr>
+                <tr>
+                    <th>Down:</th>
+                    <td>S / Down arrow</td>
+                </tr>
+                <tr>
+                    <th>A:</th>
+                    <td>L / Z</td>
+                </tr>
+                <tr>
+                    <th>B:</th>
+                    <td>P / X</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <script>
+            //util
+            function getId(query) {
+                var elems = document.querySelectorAll.call(document, query);
+                return (elems ? ((elems.length==1) ? elems[0] : elems) : null);
+            };
+            
+            Node.prototype.addClass = function(className) {
+                var classes = this.className.split(/\s+/);
+                classes = classes.filter(function(a) { return a && a!=className; });
+                classes.push(className);
+                this.className = classes.join(" ");
+            };
+            
+            Node.prototype.removeClass = function(className) {
+                var classes = this.className.split(/\s+/);
+                classes = classes.filter(function(a) { return a && a!=className; });
+                this.className = classes.join(" ");
+            };
+            
+            Node.prototype.on = function(eventNames, callback) {
+                var events = eventNames.split(/\s+/);
+                
+                for (var i=0; i<events.length; i++) {
+                    var eventName = events[i];
+                    this.addEventListener(eventName, callback);
+                }
+            };
+            
+            Node.prototype.trigger = function(eventName) {
+                var eventMap = {
+                    click: "MouseEvents",
+                    mousedown: "MouseEvents",
+                    mouseup: "MouseEvents",
+                    focus: "HTMLEvents",
+                    change: "HTMLEvents",
+                    blur: "HTMLEvents",
+                    select: "HTMLEvents"
+                };
+                
+                var event = document.createEvent(eventMap[eventName]);
+                event.initEvent(eventName, (eventName == "change" ? false : true), true);
+                event.synthetic = true;
+                
+                this.dispatchEvent(event, true);
+            };
+            
+            //GAME START
+            
+            var $screen = getId("#screen");
+            var $speaker = getId("#speaker");
+            var $up = getId("#up");
+            var $left = getId("#left");
+            var $right = getId("#right");
+            var $down = getId("#down");
+            var $a = getId("#a");
+            var $b = getId("#b");
+            var $run = getId("#run");
+            var $code = getId("#code");
+            
+            //set the args for the arduboy statically so it can be instantiated by the program itself
+            Arduboy.screen = WebGL2DScreen($screen);
+            Arduboy.speaker = $speaker;
+            
+            //pass through the controls to the arduboy script
+            $up.on("mousedown touchstart", upPress);
+            $down.on("mousedown touchstart", downPress);
+            $left.on("mousedown touchstart", leftPress);
+            $right.on("mousedown touchstart", rightPress);
+            $a.on("mousedown touchstart", aPress);
+            $b.on("mousedown touchstart", bPress);
+            
+            document.on("mouseup touchend", function() {
+                upRelease();
+                downRelease();
+                leftRelease();
+                rightRelease();
+                aRelease();
+                bRelease();
+            });
+            
+            function upPress() {
+                $up.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.up] = 1;
+                return false;
+            }
+            
+            function upRelease() { 
+                $up.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.up] = 0;
+                return false;
+            }
+            
+            function downPress() { 
+                $down.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.down] = 1;
+                return false;
+            }
+            
+            function downRelease() { 
+                $down.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.down] = 0;
+                return false;
+            }
+            
+            function leftPress() { 
+                $left.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.left] = 1;
+                return false;
+            }
+            
+            function leftRelease() { 
+                $left.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.left] = 0;
+                return false;
+            }
+            
+            function rightPress() { 
+                $right.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.right] = 1;
+                return false;
+            }
+            
+            function rightRelease() { 
+                $right.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.right] = 0;
+                return false;
+            }
+            
+            function aPress() { 
+                $a.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.a] = 1;
+                return false;
+            }
+            
+            function aRelease() { 
+                $a.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.a] = 0;
+                return false;
+            }
+            
+            function bPress() { 
+                $b.addClass("active");
+                Arduboy.pinStatus[Arduboy.pins.b] = 1;
+                return false;
+            }
+            
+            function bRelease() { 
+                $b.removeClass("active");
+                Arduboy.pinStatus[Arduboy.pins.b] = 0;
+                return false;
+            }
+            
+            //register keyboard events too
+            var MOUSE = { LEFT: 1,  RIGHT: 3 };
+            var KEY = { W: 87, A: 65, S: 83, D: 68, L: 76, P: 80, Z: 90, X: 88, UP: 38, RIGHT: 39, DOWN: 40, LEFT: 37 };
+            
+            document.on("keydown", function(e) {
+                e.preventDefault();
+                
+                switch (e.which) {
+                    case KEY.W: upPress(); break;
+                    case KEY.A: leftPress(); break;
+                    case KEY.S: downPress(); break;
+                    case KEY.D: rightPress(); break;
+                    case KEY.L: aPress(); break;
+                    case KEY.P: bPress(); break;
+                    case KEY.Z: aPress();  break;
+                    case KEY.X: bPress(); break;
+                    case KEY.UP: upPress();  break;
+                    case KEY.RIGHT: rightPress(); break;
+                    case KEY.DOWN: downPress(); break;
+                    case KEY.LEFT: leftPress(); break;
+                }
+            });
+            
+            document.addEventListener("keyup", function(e) {
+                switch (e.which) {
+                    case KEY.W: upRelease(); break;
+                    case KEY.A: leftRelease(); break;
+                    case KEY.S: downRelease(); break;
+                    case KEY.D: rightRelease(); break;
+                    case KEY.L: aRelease(); break;
+                    case KEY.P: bRelease(); break;
+                    case KEY.Z: aRelease();  break;
+                    case KEY.X: bRelease(); break;
+                    case KEY.UP: upRelease();  break;
+                    case KEY.RIGHT: rightRelease(); break;
+                    case KEY.DOWN: downRelease(); break;
+                    case KEY.LEFT: leftRelease(); break;
+                }
+            });
+            
+            $code.on("keydown", function(e) {
+                e.stopPropagation();
+            });
+            
+            $run.on("click", runCode);
+            
+            var fps = 60;
+            var fpsTimeout = 1000 / fps;
+            
+            var prog, running = false, runTimeout;
+            function runLoop() {
+                if (!running) {
+                    return;
+                }
+                
+                if (prog.loop) {
+                    prog.loop();
+                    Arduboy.flush(); //manual flush as part of requestanimationframe loop
+                }
+                
+                runTimeout = setTimeout(function() {
+                    requestAnimationFrame(runLoop);
+                }, fpsTimeout);
+            }
+            
+            //take the code and run it through the arduboy (warning: uses eval to run the js code)
+            function runCode() {
+                try  {
+                    Arduboy.clear();
+                    
+                    //stop the current program if there is one already running
+                    running = false;
+                    if (runTimeout) {
+                        clearTimeout(runTimeout);
+                    }
+                    
+                    //we will use parse the c code from the given program and run through it (imports and the like)
+                    
+                    
+                    //we translate the function calls to our exposed js methods
+                    
+                    
+                    eval('prog = (function() { ' + $code.value + ' return {setup: setup, loop: loop}; })();');
+                    prog.setup();
+                    running = true;
+                    runLoop();
+                } catch (e) {
+                    //highlight the code box and present the error to the user in the console
+                    console.log(e);
+                }
+            }
+            
+            runCode();
+        </script>
+        <!--<script src="..\games\ArduBreakout.js"></script>
+        
+        <script>
+            prog = {setup: setup, loop: loop};
+            
+            prog.setup();
+            running = true;
+            runLoop();
+        </script>-->
+    </body>
+</html>
